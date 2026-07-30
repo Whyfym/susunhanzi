@@ -333,7 +333,7 @@ function renderStart(){
   const card = el("div", "card");
   card.innerHTML = `
     <div class="hero-mark">
-      <div class="glyphs cjk-display">MANDARINFY</div>
+      <div class="glyphs cjk-display">给 才 把 得</div>
       <div class="sub">Latihan menyusun kata menjadi kalimat Mandarin yang benar tata bahasanya</div>
     </div>
     <h1 class="page-title" style="text-align:center;margin-top:18px;">Mulai Latihan</h1>
@@ -488,9 +488,36 @@ function currentAnswerWords(){
   return state.answer.map(id => state.bank.find(t => t.id === id).word);
 }
 
+// Pronoun / person-noun words. When a wrong answer differs from an accepted
+// answer by swapping exactly two of these (e.g. subject <-> object/receiver),
+// it is still counted correct: both orderings are valid instances of the same
+// grammar pattern being drilled, just with the two people's roles reversed.
+const PERSON_WORDS = new Set([
+  "我","你","他","她","我们","你们","他们",
+  "妈妈","爸爸","老师","哥哥","姐姐","弟弟","妹妹","朋友","同学","经理","医生"
+]);
+
 function isAnswerCorrect(userWords, question){
   const userStr = userWords.join("|");
-  return question.accepted.some(acc => acc.join("|") === userStr);
+  if (question.accepted.some(acc => acc.join("|") === userStr)) return true;
+
+  // Leniency: subject/object (person-word) swapped, everything else identical.
+  for (const acc of question.accepted){
+    if (acc.length !== userWords.length) continue;
+    const diffIdx = [];
+    for (let i = 0; i < acc.length; i++){
+      if (acc[i] !== userWords[i]) diffIdx.push(i);
+      if (diffIdx.length > 2) break;
+    }
+    if (diffIdx.length === 2){
+      const [i, j] = diffIdx;
+      if (userWords[i] === acc[j] && userWords[j] === acc[i] &&
+          PERSON_WORDS.has(acc[i]) && PERSON_WORDS.has(acc[j])){
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function renderQuiz(){
